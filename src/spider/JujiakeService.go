@@ -19,19 +19,16 @@ func NewJujiakeService() *JujiakeService {
 
 func (self *JujiakeService) QueryFangJia(city string, url string) ([]*House, error) {
 	response, err := http.Get(url)
-	time.Sleep(time.Second * 5)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
 	defer func() { err = response.Body.Close() }()
 	if response.StatusCode != 200 {
-		log.Println(url, err.Error())
 		return nil, errors.New("not 200")
 	}
 	doc, err := goquery.NewDocumentFromReader(response.Body)
 	if err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 	houses := make([]*House,0)
