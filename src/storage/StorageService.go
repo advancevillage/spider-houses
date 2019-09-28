@@ -7,6 +7,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"log"
 	"spider"
+	"strings"
 )
 
 type StorageService struct {
@@ -36,19 +37,16 @@ func NewStorageRedisService(host string, port string, password string, db int) *
 }
 
 func (self *StorageService) CreateHouse(houses []*spider.House) {
-	for i := 0; i < len(houses); i++ {
-		err := self.DB.Table("houses").Create(houses[i]).Error
-		if err != nil {
-			log.Println(err.Error())
-		}
+	values := make([]string, 0, len(houses))
+	for i:= 0; i < len(houses); i++ {
+		value := fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d)", houses[i].Town, houses[i].Area,houses[i].Room,houses[i].TotalPrice, houses[i].Price, houses[i].Address, houses[i].Options, houses[i].CreateTime, houses[i].UpdateTime, houses[i].Page)
+		values = append(values, value)
 	}
-}
-
-func (self *StorageRedisService) CreateHouse(houses []*spider.House) {
-	for i := 0; i < len(houses); i++ {
-		err := self.Client.LPush(houses[i].City, houses[i]).Err()
-		if err != nil {
-			log.Println(err.Error())
-		}
+	sql := "insert into houses(town, area, room, totalPrice, price, address, options, createTime, updateTime, page)values" +
+		strings.Replace(strings.Trim(fmt.Sprint(values), "[]"), ") (", "),(", -1) +
+		";"
+	err := self.DB.Exec(sql).Error
+	if err != nil {
+		log.Println(err.Error())
 	}
 }

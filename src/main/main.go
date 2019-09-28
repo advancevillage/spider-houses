@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"spider"
 	"storage"
-	"time"
+	"sync"
 )
 
 type Test struct {
@@ -14,25 +13,66 @@ type Test struct {
 }
 
 func main() {
-	host := "100.100.25.66"
-	port := "6379"
-	password := ""
-	repo := storage.NewStorageRedisService(host, port, password, 0)
+	host := "192.168.1.101"
+	port := "3306"
+	user := "root"
+	password := "password"
+	repo := storage.NewStorageService(host, port, user, password)
 	jujiaku := spider.NewJujiakeService()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute * 30)
-	for i := 1; i <= 7; i++ {
-		//go func(ctx context.Context) {
-			houses, err := jujiaku.QueryFangJia("武汉", fmt.Sprintf("https://wuhan.anjuke.com/sale/hongshana/b142-p%d/", i))
-			if err != nil {
-				<- ctx.Done()
-			}
-			if len(houses) > 0 {
-				repo.CreateHouse(houses)
-			} else {
-				<- ctx.Done()
-			}
-		//}(ctx)
+	group := sync.WaitGroup{}
+	//城市-->多城区-->多格局
+	src := []*spider.Town{
+		&spider.Town{
+			Key:  "wuhan",
+			Name: "武汉",
+			Func: jujiaku,
+			Areas: []*spider.Area{
+				&spider.Area{
+					Key: "hongshana",
+					Name: "洪山区",
+					Rooms:[]*spider.RoomType{
+						{Key: "b142", Name:"2室"},
+					},
+				},
+				&spider.Area{
+					Key: "dongxihu",
+					Name: "东西湖",
+					Rooms:[]*spider.RoomType{
+						{Key: "b142", Name:"2室"},
+					},
+				},
+			},
+		},
 	}
+	for c := 0; c < len(src); c++ {
+		cityName := src[c].Name
+		cityKey := src[c].Key
+		for a := 0; a < len(src[c].Areas); a++ {
+			areaName := src[c].Areas[a].Name
+			areaKey := src[c].Areas[a].Key
+			for r := 0; r <len(src[c].Areas[a].Rooms); r++ {
+				roomName := src[c].Areas[a].Rooms[r].Name
+				roomKey := src[c].Areas[a].Rooms[r].Key
+				for p := 1; p <= 10; p++ {
+					group.Add(1)
+					//go func(ic, ia, ir, ip int) {
+					//	time.Sleep(1 * time.Second)
+						//log.Println(ic, ia, ir, ip)
+						houses, err := src[c].Func.QueryFangJia(cityName, areaName, roomName, p, src[c].Func.UrlFormat(cityKey, areaKey, roomKey, p))
+						if err != nil {
+							group.Done()
+						} else if len(houses) > 0 {
+							repo.CreateHouse(houses)
+							group.Done()
+						} else {
+							group.Done()
+						}
+					//}(c, a, r, p)
+				}
+			}
+
+		}
+	}
+	group.Wait()
 	fmt.Println("finish done...")
-	cancel()
 }
