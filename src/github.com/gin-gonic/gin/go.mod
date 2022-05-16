@@ -14,5 +14,5 @@ require (
 	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.2.8
 )
